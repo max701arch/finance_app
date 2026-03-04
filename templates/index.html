@@ -1,0 +1,281 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <meta name="description" content="Personal finance dashboard with analytics, filters, and secure multi-user access.">
+    <title>Finance Tracker Dashboard</title>
+    <link rel="stylesheet" href="{{ url_for('static', filename='css/bootstrap.min.css') }}">
+</head>
+<body>
+    <main class="container py-4 py-md-5">
+        <header class="mb-4 d-flex flex-wrap gap-3 align-items-end justify-content-between">
+            <div>
+                <p class="text-uppercase text-secondary fw-semibold mb-1">Finance Suite</p>
+                <h1 class="page-title mb-1">Personal Finance Dashboard</h1>
+                <p class="text-secondary mb-0">Track cash flow, search transactions, export, and manage history.</p>
+            </div>
+            <div class="text-md-end d-grid gap-2">
+                <div>
+                    <small class="text-secondary">Signed in as</small>
+                    <div class="fw-semibold">{{ current_user['username'] }}</div>
+                    <small class="text-secondary">Today: {{ today }}</small>
+                </div>
+                <div class="d-flex gap-2 justify-content-md-end">
+                    <button id="themeToggle" type="button" class="btn btn-outline-dark btn-sm theme-toggle">Dark mode</button>
+                    <form action="{{ url_for('logout') }}" method="POST" class="d-inline">
+                        <input type="hidden" name="csrf_token" value="{{ csrf_token() }}">
+                        <button type="submit" class="btn btn-outline-dark btn-sm">Logout</button>
+                    </form>
+                </div>
+            </div>
+        </header>
+
+        <section class="row g-3 mb-4">
+            <div class="col-12 col-md-4">
+                <article class="panel delay-1 p-3 metric-card h-100">
+                    <div class="metric-label">Filtered Income</div>
+                    <div class="metric-value metric-income">${{ "%.2f"|format(view_income) }}</div>
+                </article>
+            </div>
+            <div class="col-12 col-md-4">
+                <article class="panel delay-2 p-3 metric-card h-100">
+                    <div class="metric-label">Filtered Expense</div>
+                    <div class="metric-value metric-expense">${{ "%.2f"|format(view_expense) }}</div>
+                </article>
+            </div>
+            <div class="col-12 col-md-4">
+                <article class="panel delay-3 p-3 metric-card h-100">
+                    <div class="metric-label">Filtered Balance</div>
+                    <div class="metric-value metric-balance">${{ "%.2f"|format(view_balance) }}</div>
+                </article>
+            </div>
+        </section>
+
+        <section class="row g-3 mb-4">
+            <div class="col-12 col-lg-7">
+                <div class="panel delay-1 p-3 p-md-4 h-100">
+                    <h2 class="h5 mb-3">Add Transaction</h2>
+                    <form action="{{ url_for('add_transaction') }}" method="POST" class="row g-3 align-items-end">
+                        <input type="hidden" name="csrf_token" value="{{ csrf_token() }}">
+                        <div class="col-12 col-md-3">
+                            <label for="type" class="form-label">Type</label>
+                            <select id="type" name="type" class="form-select" required>
+                                <option value="income">Income</option>
+                                <option value="expense">Expense</option>
+                            </select>
+                        </div>
+                        <div class="col-12 col-md-3">
+                            <label for="amount" class="form-label">Amount</label>
+                            <input id="amount" type="number" name="amount" class="form-control" placeholder="0.00" required min="0.01" step="0.01">
+                        </div>
+                        <div class="col-12 col-md-3">
+                            <label for="category" class="form-label">Category</label>
+                            <input id="category" type="text" name="category" class="form-control" placeholder="Salary / Food" maxlength="80">
+                        </div>
+                        <div class="col-12 col-md-3">
+                            <label for="date" class="form-label">Date</label>
+                            <input id="date" type="date" name="date" class="form-control" value="{{ today }}" required>
+                        </div>
+                        <div class="col-12 d-grid d-md-flex justify-content-md-end">
+                            <button class="btn btn-dark px-4" type="submit">Save Transaction</button>
+                        </div>
+                    </form>
+                </div>
+            </div>
+
+            <div class="col-12 col-lg-5">
+                <div class="panel delay-2 p-3 p-md-4 h-100">
+                    <h2 class="h5 mb-3">Search & Filter</h2>
+                    <form action="{{ url_for('index') }}" method="GET" class="row g-3 align-items-end">
+                        <div class="col-12">
+                            <label for="q" class="form-label">Search (category/type/date/amount)</label>
+                            <input id="q" type="text" name="q" class="form-control" value="{{ filters['search'] }}" placeholder="e.g. food, income, 2026-03">
+                        </div>
+
+                        <div class="col-12 col-sm-8">
+                            <label for="month" class="form-label">Month</label>
+                            <input id="month" type="month" name="month" class="form-control" value="{{ filters['month'] or '' }}">
+                        </div>
+                        <div class="col-12 col-sm-4">
+                            <label for="tx_type" class="form-label">Type</label>
+                            <select id="tx_type" name="tx_type" class="form-select">
+                                <option value="">All</option>
+                                <option value="income" {% if filters['tx_type'] == 'income' %}selected{% endif %}>Income</option>
+                                <option value="expense" {% if filters['tx_type'] == 'expense' %}selected{% endif %}>Expense</option>
+                            </select>
+                        </div>
+
+                        <div class="col-12">
+                            <label for="category_filter" class="form-label">Category</label>
+                            <select id="category_filter" name="category" class="form-select">
+                                <option value="">All categories</option>
+                                {% for cat in category_options %}
+                                    <option value="{{ cat }}" {% if filters['category'] == cat %}selected{% endif %}>{{ cat }}</option>
+                                {% endfor %}
+                            </select>
+                        </div>
+
+                        <div class="col-12 col-sm-8">
+                            <label for="from_date" class="form-label">From date</label>
+                            <input id="from_date" type="date" name="from_date" class="form-control" value="{{ filters['from_date'] or '' }}">
+                        </div>
+                        <div class="col-12 col-sm-4">
+                            <label for="to_date" class="form-label">To date</label>
+                            <input id="to_date" type="date" name="to_date" class="form-control" value="{{ filters['to_date'] or '' }}">
+                        </div>
+
+                        <div class="col-12 d-grid d-md-flex justify-content-md-end gap-2">
+                            <button type="submit" class="btn btn-outline-dark">Apply</button>
+                            <a href="{{ clear_filters_url }}" class="btn btn-light border">Clear</a>
+                        </div>
+                    </form>
+
+                    <div class="mt-3">
+                        {% if active_filters %}
+                            <div class="d-flex flex-wrap gap-2 align-items-center">
+                                {% for item in active_filters %}
+                                    <span class="badge text-bg-info">{{ item }}</span>
+                                {% endfor %}
+                            </div>
+                        {% else %}
+                            <div class="small text-secondary">No active filters.</div>
+                        {% endif %}
+                    </div>
+
+                    <hr>
+
+                    <div class="small text-secondary d-grid gap-1 mb-3">
+                        <div>Total income (your account): <strong>${{ "%.2f"|format(total_income) }}</strong></div>
+                        <div>Total expense (your account): <strong>${{ "%.2f"|format(total_expense) }}</strong></div>
+                        <div>Total balance (your account): <strong>${{ "%.2f"|format(total_balance) }}</strong></div>
+                    </div>
+
+                    <div class="d-flex flex-wrap gap-2 align-items-center mb-3">
+                        <a href="{{ csv_export_url }}" class="btn btn-outline-dark">Export CSV</a>
+                        <a href="{{ pdf_export_url }}" class="btn btn-outline-dark">Export PDF</a>
+                    </div>
+
+                    <div class="d-flex flex-wrap gap-2 align-items-center">
+                        <form action="{{ url_for('clear_history') }}" method="POST" class="d-inline" data-confirm="Current filter bo'yicha tarix o'chirilsinmi?">
+                            <input type="hidden" name="csrf_token" value="{{ csrf_token() }}">
+                            <input type="hidden" name="scope" value="filtered">
+                            <input type="hidden" name="q" value="{{ filters['search'] }}">
+                            <input type="hidden" name="month" value="{{ filters['month'] or '' }}">
+                            <input type="hidden" name="tx_type" value="{{ filters['tx_type'] }}">
+                            <input type="hidden" name="category" value="{{ filters['category'] }}">
+                            <input type="hidden" name="from_date" value="{{ filters['from_date'] or '' }}">
+                            <input type="hidden" name="to_date" value="{{ filters['to_date'] or '' }}">
+                            <button
+                                type="submit"
+                                class="btn btn-outline-danger"
+                                {% if not filters_active %}disabled{% endif %}
+                            >
+                                Clear Filtered History
+                            </button>
+                        </form>
+
+                        <form action="{{ url_for('clear_history') }}" method="POST" class="d-inline" data-confirm="Faqat sizning barcha tarixingiz o'chiriladi. Tasdiqlaysizmi?">
+                            <input type="hidden" name="csrf_token" value="{{ csrf_token() }}">
+                            <input type="hidden" name="scope" value="all">
+                            <button
+                                type="submit"
+                                class="btn btn-danger"
+                            >
+                                Clear All History
+                            </button>
+                        </form>
+                    </div>
+                </div>
+            </div>
+        </section>
+
+        <section class="row g-3 mb-4">
+            <div class="col-12 col-xl-8">
+                <div class="panel delay-3 p-3 p-md-4">
+                    <h2 class="h5 mb-3">Monthly Income vs Expense (Filtered)</h2>
+                    <div class="chart-wrap">
+                        <canvas id="trendChart"></canvas>
+                    </div>
+                </div>
+            </div>
+            <div class="col-12 col-xl-4">
+                <div class="panel delay-4 p-3 p-md-4 h-100">
+                    <h2 class="h5 mb-3">Category-wise Expense Pie Chart</h2>
+                    <div class="chart-wrap">
+                        <canvas id="categoryChart"></canvas>
+                    </div>
+                </div>
+            </div>
+        </section>
+
+        <section class="panel delay-4 p-3 p-md-4">
+            <div class="d-flex flex-wrap justify-content-between align-items-center mb-3 gap-2">
+                <h2 class="h5 mb-0">Transactions</h2>
+                <span class="text-secondary small">{{ transactions|length }} records</span>
+            </div>
+
+            {% if transactions %}
+                <div class="table-responsive">
+                    <table class="table align-middle mb-0">
+                        <thead>
+                            <tr>
+                                <th scope="col">Date</th>
+                                <th scope="col">Type</th>
+                                <th scope="col">Category</th>
+                                <th scope="col" class="text-end">Amount</th>
+                                <th scope="col" class="text-end">Action</th>
+                            </tr>
+                        </thead>
+                        <tbody>
+                            {% for t in transactions %}
+                                <tr>
+                                    <td>{{ t[1] }}</td>
+                                    <td>
+                                        {% if t[2] == 'income' %}
+                                            <span class="badge rounded-pill text-bg-success">Income</span>
+                                        {% else %}
+                                            <span class="badge rounded-pill text-bg-danger">Expense</span>
+                                        {% endif %}
+                                    </td>
+                                    <td>{{ t[3] }}</td>
+                                    <td class="text-end fw-semibold">${{ "%.2f"|format(t[4]) }}</td>
+                                    <td class="text-end">
+                                        <form action="{{ url_for('delete_transaction', tx_id=t[0]) }}" method="POST" class="d-inline" data-confirm="Tanlangan yozuv o'chirilsinmi?">
+                                            <input type="hidden" name="csrf_token" value="{{ csrf_token() }}">
+                                            <input type="hidden" name="q" value="{{ filters['search'] }}">
+                                            <input type="hidden" name="month" value="{{ filters['month'] or '' }}">
+                                            <input type="hidden" name="tx_type" value="{{ filters['tx_type'] }}">
+                                            <input type="hidden" name="category" value="{{ filters['category'] }}">
+                                            <input type="hidden" name="from_date" value="{{ filters['from_date'] or '' }}">
+                                            <input type="hidden" name="to_date" value="{{ filters['to_date'] or '' }}">
+                                            <button
+                                                type="submit"
+                                                class="btn btn-outline-danger btn-sm"
+                                            >
+                                                Delete
+                                            </button>
+                                        </form>
+                                    </td>
+                                </tr>
+                            {% endfor %}
+                        </tbody>
+                    </table>
+                </div>
+            {% else %}
+                <div class="text-secondary">No matching transactions found for the current search/filter.</div>
+            {% endif %}
+        </section>
+    </main>
+
+    <script id="dashboard-data" type="application/json">{{ {
+        "months": months,
+        "income_data": income_data,
+        "expense_data": expense_data,
+        "categories": categories,
+        "category_data": category_data
+    } | tojson }}</script>
+    <script src="{{ url_for('static', filename='js/chart.min.js') }}"></script>
+    <script src="{{ url_for('static', filename='js/dashboard.js') }}"></script>
+</body>
+</html>

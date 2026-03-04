@@ -1,3 +1,4 @@
+<<<<<<< HEAD
 # Byte-compiled / optimized / DLL files
 __pycache__/
 *.py[codz]
@@ -205,3 +206,25 @@ cython_debug/
 marimo/_static/
 marimo/_lsp/
 __marimo__/
+=======
+.venv/
+__pycache__/
+*.py[cod]
+*.log
+
+.env
+.env.*
+!.env.example
+
+# Local database / exports
+*.db
+*.sqlite
+*.sqlite3
+*.csv
+*.pdf
+
+# OS / editor
+.DS_Store
+Thumbs.db
+.vscode/
+>>>>>>> f6644f4 (Initial commit)

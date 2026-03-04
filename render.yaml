@@ -1,0 +1,24 @@
+services:
+  - type: web
+    name: finance-tracker
+    env: python
+    plan: free
+    autoDeploy: true
+    healthCheckPath: /health
+    buildCommand: pip install -r requirements.txt
+    startCommand: gunicorn --workers 2 --threads 4 --timeout 120 --bind 0.0.0.0:$PORT wsgi:app
+    envVars:
+      - key: FLASK_SECRET_KEY
+        generateValue: true
+      - key: TRUST_PROXY
+        value: "1"
+      - key: FLASK_USE_HTTPS
+        value: "1"
+      - key: FLASK_SECURE_COOKIES
+        value: "1"
+      - key: FINANCE_DB_PATH
+        value: /var/data/finance.db
+    disk:
+      name: finance-data
+      mountPath: /var/data
+      sizeGB: 1

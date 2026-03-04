@@ -1,0 +1,56 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Login | Finance Tracker</title>
+    <link rel="stylesheet" href="{{ url_for('static', filename='css/bootstrap.min.css') }}">
+</head>
+<body>
+    <main class="container py-4 py-md-5 auth-shell">
+        <header class="mb-4 d-flex flex-wrap gap-3 align-items-end justify-content-between">
+            <div>
+                <p class="text-uppercase text-secondary fw-semibold mb-1">Finance Suite</p>
+                <h1 class="page-title mb-1">Welcome Back</h1>
+                <p class="text-secondary mb-0">Login to continue to your personal dashboard.</p>
+            </div>
+            <button id="themeToggle" type="button" class="btn btn-outline-dark btn-sm theme-toggle">Dark mode</button>
+        </header>
+
+        <section class="row g-3">
+            <div class="col-12">
+                <div class="panel p-4 auth-card">
+                    <h2 class="h5 mb-3">Login</h2>
+
+                    {% if error %}
+                        <div class="notice notice-error mb-3">{{ error }}</div>
+                    {% endif %}
+
+                    <form action="{{ url_for('login') }}" method="POST" class="row g-3">
+                        <input type="hidden" name="csrf_token" value="{{ csrf_token() }}">
+                        <input type="hidden" name="next" value="{{ next_url }}">
+
+                        <div class="col-12">
+                            <label for="username" class="form-label">Username</label>
+                            <input id="username" name="username" class="form-control" value="{{ username }}" required autofocus>
+                        </div>
+
+                        <div class="col-12">
+                            <label for="password" class="form-label">Password</label>
+                            <input id="password" type="password" name="password" class="form-control" required>
+                        </div>
+
+                        <div class="col-12 d-grid d-md-flex justify-content-md-end gap-2">
+                            <button type="submit" class="btn btn-dark">Login</button>
+                            <a href="{{ url_for('register', next=next_url) }}" class="btn btn-light border">Create account</a>
+                        </div>
+                    </form>
+                </div>
+            </div>
+        </section>
+    </main>
+
+    <script src="{{ url_for('static', filename='js/chart.min.js') }}"></script>
+    <script src="{{ url_for('static', filename='js/dashboard.js') }}"></script>
+</body>
+</html>
